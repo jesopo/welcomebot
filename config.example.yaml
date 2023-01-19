@@ -1,0 +1,15 @@
+server: irc.libera.chat:+6697
+nickname: welcomebot
+# optional
+#username: welcomebot
+# optional
+#realname: welcomebot
+channels:
+  "##jess-test": "welcome to {channel}, {nickname}!"
+
+# optional
+#sasl:
+#  username: welcomebot
+#  password: hunter3
+
+database: ~/.welcomebot.db
