@@ -28,6 +28,8 @@ class Server(BaseServer):
             and self.casefold(line.params[0]) in self._config.channels
             and not self.casefold_equals(line.hostmask.nickname, self.nickname)
         ):
+            # a user has joined one of our watched channels
+
             channel = self.casefold(line.params[0])
 
             if not line.params[1] == "*":
@@ -51,6 +53,31 @@ class Server(BaseServer):
                 greet = self._config.channels[channel]
                 greet = greet.format(nickname=line.hostmask.nickname, channel=channel)
                 await self.send(build("PRIVMSG", [channel, greet]))
+
+        if (
+            line.command == "ACCOUNT"
+            and not line.params[0] == "*"
+            and not self.casefold_equals(line.hostmask.nickname, self.nickname)
+        ):
+            # a user, in one or more of our channels, has logged in to an account.
+            # mark the account as seen for all our watched channel they're already
+            # in, given they'll have already been greeted
+
+            account = self.casefold(line.params[0])
+            user = self.users[self.casefold(line.hostmask.nickname)]
+            for channel in set(self._config.channels.keys()) & user.channels:
+                db_cursor = await self._database.execute(
+                    "SELECT key FROM seen WHERE channel = ? AND key = ?",
+                    [channel, account],
+                )
+                user_new = (await db_cursor.fetchone()) is None
+                if not user_new:
+                    continue
+
+                await self._database.execute(
+                    "INSERT INTO seen (channel, key) VALUES (?, ?)", [channel, account]
+                )
+                await self._database.commit()
 
     async def line_send(self, line: Line):
         print(f"{self.name} > {line.format()}")
